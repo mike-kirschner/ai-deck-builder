@@ -38,4 +38,5 @@ next-env.d.ts
 
 # deployment artifacts
 deploy-*.zip
+.azure-deploy/
 
