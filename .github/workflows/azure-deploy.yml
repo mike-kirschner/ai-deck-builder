@@ -1,0 +1,83 @@
+name: Build and Deploy to Azure
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+env:
+  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linter
+      run: npm run lint
+      continue-on-error: true
+
+    - name: Build application
+      run: npm run build
+      env:
+        # These are only needed for build-time validation
+        # Actual runtime values come from Azure App Service Configuration
+        AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        AZURE_COSMOS_ENDPOINT: ${{ secrets.AZURE_COSMOS_ENDPOINT }}
+        AZURE_COSMOS_KEY: ${{ secrets.AZURE_COSMOS_KEY }}
+        AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
+        AZURE_SEARCH_API_KEY: ${{ secrets.AZURE_SEARCH_API_KEY }}
+        AZURE_AI_FOUNDRY_ENDPOINT: ${{ secrets.AZURE_AI_FOUNDRY_ENDPOINT }}
+        AZURE_AI_FOUNDRY_API_KEY: ${{ secrets.AZURE_AI_FOUNDRY_API_KEY }}
+
+    - name: Create deployment package
+      run: |
+        # For Next.js standalone output (recommended for Azure)
+        if [ -d ".next/standalone" ]; then
+          # Standalone mode - copy standalone directory
+          cp -r .next/standalone deploy/
+          cp -r .next/static deploy/.next/static
+          cp -r public deploy/public 2>/dev/null || true
+        else
+          # Standard mode - copy all necessary files
+          mkdir -p deploy
+          cp -r .next deploy/
+          cp -r public deploy/ 2>/dev/null || true
+          cp package*.json deploy/
+          cp next.config.js deploy/ 2>/dev/null || true
+        fi
+        cd deploy && zip -r ../deploy.zip .
+
+    - name: Deploy to Azure Web App
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
+        package: ./deploy.zip
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+
+    - name: Azure logout
+      if: always()
+      uses: azure/logout@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+

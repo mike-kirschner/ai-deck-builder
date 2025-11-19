@@ -1,0 +1,51 @@
+<div class="min-h-screen bg-gray-50 p-8">
+  <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-10">
+    <!-- Title -->
+    <div class="text-center mb-10 pb-8 border-b-2 border-purple-500">
+      <h1 class="text-4xl font-bold text-gray-900 mb-3">{{title}}</h1>
+      {{#if subtitle}}
+      <p class="text-xl text-gray-600">{{subtitle}}</p>
+      {{/if}}
+    </div>
+
+    <!-- Workshop Content -->
+    <div class="space-y-8">
+      {{#eachSection sections}}
+      <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6">
+        <h2 class="text-2xl font-bold text-purple-900 mb-4 flex items-center">
+          <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3 text-sm">
+            {{@index}}
+          </span>
+          {{heading}}
+        </h2>
+        
+        {{#if bullets}}
+        <div class="ml-11">
+          <ul class="space-y-2 text-gray-700">
+            {{#each bullets}}
+            <li class="flex items-start">
+              <span class="text-purple-600 mr-2">✓</span>
+              <span>{{this}}</span>
+            </li>
+            {{/each}}
+          </ul>
+        </div>
+        {{/if}}
+        
+        {{#if content}}
+        <div class="ml-11 mt-3 text-gray-700">
+          {{content}}
+        </div>
+        {{/if}}
+      </div>
+      {{/eachSection}}
+    </div>
+
+    <!-- Action Items -->
+    <div class="mt-10 p-6 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+      <h3 class="font-semibold text-gray-900 mb-2">Key Takeaways</h3>
+      <p class="text-gray-700">Review the sections above and identify action items for your team.</p>
+    </div>
+  </div>
+</div>
+

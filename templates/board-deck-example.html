@@ -1,0 +1,47 @@
+<div class="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-12">
+  <!-- Title Slide -->
+  <div class="slide mb-16">
+    <div class="flex flex-col items-center justify-center h-full">
+      <h1 class="text-6xl font-bold mb-6 text-center">{{title}}</h1>
+      {{#if subtitle}}
+      <p class="text-3xl text-slate-300 text-center">{{subtitle}}</p>
+      {{/if}}
+      {{#if audience}}
+      <p class="text-xl text-slate-400 mt-8">For: {{audience}}</p>
+      {{/if}}
+    </div>
+  </div>
+
+  <!-- Content Slides -->
+  {{#eachSection sections}}
+  <div class="slide mb-16">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-4xl font-bold mb-8 text-blue-400">{{heading}}</h2>
+      
+      {{#if bullets}}
+      <ul class="space-y-4 text-xl">
+        {{#each bullets}}
+        <li class="flex items-start">
+          <span class="text-blue-400 mr-4 text-2xl">•</span>
+          <span class="text-slate-200">{{this}}</span>
+        </li>
+        {{/each}}
+      </ul>
+      {{/if}}
+      
+      {{#if content}}
+      <div class="mt-6 text-lg text-slate-300 leading-relaxed">
+        {{content}}
+      </div>
+      {{/if}}
+      
+      {{#if notes}}
+      <div class="mt-8 p-4 bg-slate-800 rounded-lg border-l-4 border-blue-500">
+        <p class="text-sm text-slate-400 italic">{{notes}}</p>
+      </div>
+      {{/if}}
+    </div>
+  </div>
+  {{/eachSection}}
+</div>
+

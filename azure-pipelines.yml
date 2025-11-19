@@ -1,0 +1,93 @@
+# Azure DevOps Pipeline for AI Deck Builder
+# This pipeline builds and deploys the Next.js application to Azure App Service
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+  azureSubscription: 'your-azure-subscription-connection' # Update this
+  appName: 'your-app-service-name' # Update this
+  resourceGroup: 'your-resource-group' # Update this
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build Application'
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '$(nodeVersion)'
+      displayName: 'Install Node.js'
+
+    - task: Npm@1
+      displayName: 'Install dependencies'
+      inputs:
+        command: 'ci'
+
+    - task: Npm@1
+      displayName: 'Run linter'
+      inputs:
+        command: 'custom'
+        customCommand: 'run lint'
+      continueOnError: true
+
+    - task: Npm@1
+      displayName: 'Build application'
+      inputs:
+        command: 'custom'
+        customCommand: 'run build'
+      env:
+        # Build-time environment variables (for validation)
+        AZURE_STORAGE_CONNECTION_STRING: $(AZURE_STORAGE_CONNECTION_STRING)
+        AZURE_COSMOS_ENDPOINT: $(AZURE_COSMOS_ENDPOINT)
+        AZURE_COSMOS_KEY: $(AZURE_COSMOS_KEY)
+        AZURE_SEARCH_ENDPOINT: $(AZURE_SEARCH_ENDPOINT)
+        AZURE_SEARCH_API_KEY: $(AZURE_SEARCH_API_KEY)
+        AZURE_AI_FOUNDRY_ENDPOINT: $(AZURE_AI_FOUNDRY_ENDPOINT)
+        AZURE_AI_FOUNDRY_API_KEY: $(AZURE_AI_FOUNDRY_API_KEY)
+
+    - task: ArchiveFiles@2
+      displayName: 'Archive build artifacts'
+      inputs:
+        rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+        replaceExistingArchive: true
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish build artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+
+- stage: Deploy
+  displayName: 'Deploy to Azure'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: DeployJob
+    displayName: 'Deploy to App Service'
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebApp@1
+            displayName: 'Deploy to Azure App Service'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appName: '$(appName)'
+              package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
+              deploymentMethod: 'auto'
+
