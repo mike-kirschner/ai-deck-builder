@@ -26,13 +26,13 @@ export default function TemplateList() {
   }
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return <div className="text-center py-12 text-gray-400">Loading...</div>;
   }
 
   if (templates.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600 mb-4">No templates yet.</p>
+        <p className="text-gray-400 mb-4">No templates yet.</p>
         <p className="text-gray-500">Upload your first template to get started.</p>
       </div>
     );
@@ -44,16 +44,18 @@ export default function TemplateList() {
         <Link
           key={template.id}
           href={`/templates/${template.id}`}
-          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+          className="bg-gray-900/40 border border-gray-800 rounded-2xl shadow-2xl p-6 hover:bg-gray-900/60 hover:border-indigo-500/30 transition-all"
         >
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-gray-100 mb-2">
             {template.name}
           </h3>
           {template.description && (
-            <p className="text-gray-600 mb-4 text-sm">{template.description}</p>
+            <p className="text-gray-400 mb-4 text-sm">{template.description}</p>
           )}
           <div className="flex items-center justify-between text-sm text-gray-500">
-            <span className="capitalize">{template.output_type.replace('_', ' ')}</span>
+            <span className="capitalize px-2 py-1 rounded bg-gray-800 text-gray-300">
+              {template.output_type.replace('_', ' ')}
+            </span>
             <span>{format(new Date(template.updated_at), 'MMM d, yyyy')}</span>
           </div>
           {template.tags && template.tags.length > 0 && (
@@ -61,7 +63,7 @@ export default function TemplateList() {
               {template.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
+                  className="px-2 py-1 bg-indigo-500/20 text-indigo-300 text-xs rounded border border-indigo-500/30"
                 >
                   {tag}
                 </span>

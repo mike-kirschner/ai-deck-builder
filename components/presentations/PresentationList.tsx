@@ -26,13 +26,13 @@ export default function PresentationList() {
   }
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return <div className="text-center py-12 text-gray-400">Loading...</div>;
   }
 
   if (presentations.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600 mb-4">No presentations yet.</p>
+        <p className="text-gray-400 mb-4">No presentations yet.</p>
         <p className="text-gray-500">Create your first presentation to get started.</p>
       </div>
     );
@@ -43,17 +43,19 @@ export default function PresentationList() {
       {presentations.map((presentation) => (
         <Link
           key={presentation.id}
-          href={`/presentations/${presentation.id}`}
-          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+          href={`/presentations/${presentation.id}/edit`}
+          className="bg-gray-900/40 border border-gray-800 rounded-2xl shadow-2xl p-6 hover:bg-gray-900/60 hover:border-indigo-500/30 transition-all"
         >
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-gray-100 mb-2">
             {presentation.title}
           </h3>
           {presentation.content.subtitle && (
-            <p className="text-gray-600 mb-4">{presentation.content.subtitle}</p>
+            <p className="text-gray-400 mb-4">{presentation.content.subtitle}</p>
           )}
           <div className="flex items-center justify-between text-sm text-gray-500">
-            <span className="capitalize">{presentation.status}</span>
+            <span className="capitalize px-2 py-1 rounded bg-gray-800 text-gray-300">
+              {presentation.status}
+            </span>
             <span>{format(new Date(presentation.created_at), 'MMM d, yyyy')}</span>
           </div>
         </Link>

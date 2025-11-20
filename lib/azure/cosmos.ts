@@ -137,3 +137,34 @@ export async function listKnowledgeBaseArticles(
   return resources as KnowledgeBaseArticle[];
 }
 
+export async function getKnowledgeBaseArticle(
+  id: string
+): Promise<KnowledgeBaseArticle | null> {
+  const container = await getContainer('knowledge-base');
+  try {
+    const { resource } = await container.item(id, id).read();
+    return resource as KnowledgeBaseArticle;
+  } catch (error: any) {
+    if (error.code === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function updateKnowledgeBaseArticle(
+  id: string,
+  updates: Partial<KnowledgeBaseArticle>
+): Promise<KnowledgeBaseArticle> {
+  const container = await getContainer('knowledge-base');
+  const { resource: existing } = await container.item(id, id).read();
+  const updated = { ...existing, ...updates, updated_at: new Date().toISOString() };
+  const { resource } = await container.item(id, id).replace(updated);
+  return resource as KnowledgeBaseArticle;
+}
+
+export async function deleteKnowledgeBaseArticle(id: string): Promise<void> {
+  const container = await getContainer('knowledge-base');
+  await container.item(id, id).delete();
+}
+

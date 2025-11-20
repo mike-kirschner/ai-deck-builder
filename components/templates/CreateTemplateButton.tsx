@@ -144,19 +144,19 @@ export default function CreateTemplateButton() {
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        className="px-4 py-2 rounded-lg bg-indigo-500/90 hover:bg-indigo-500 text-sm font-semibold transition"
       >
         Upload Template
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Upload New Template</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900/95 border border-gray-800 rounded-2xl shadow-2xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4 text-gray-100">Upload New Template</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Name *
                   </label>
                   <input
@@ -164,20 +164,20 @@ export default function CreateTemplateButton() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400"
+                    className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100 placeholder:text-gray-400"
                     placeholder="e.g., Board Deck v3"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Output Type *
                   </label>
                   <select
                     required
                     value={formData.outputType}
                     onChange={(e) => setFormData({ ...formData, outputType: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                    className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100"
                   >
                     <option value="single_slide">Single Slide</option>
                     <option value="multi_slide">Multi Slide</option>
@@ -188,51 +188,51 @@ export default function CreateTemplateButton() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Description
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400"
+                  className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100 placeholder:text-gray-400"
                   rows={2}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Tags (comma-separated)
                   </label>
                   <input
                     type="text"
                     value={formData.tags}
                     onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400"
+                    className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100 placeholder:text-gray-400"
                     placeholder="e.g., board, executive, roadmap"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Brand
                   </label>
                   <input
                     type="text"
                     value={formData.brand}
                     onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400"
+                    className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100 placeholder:text-gray-400"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Upload HTML File (Optional)
                 </label>
                 <div className="space-y-2 mb-4">
                   {selectedFile ? (
-                    <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-300 rounded-lg">
+                    <div className="flex items-center justify-between p-3 bg-gray-900/60 border border-gray-800 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <svg
                           className="w-5 h-5 text-gray-500"
@@ -248,7 +248,7 @@ export default function CreateTemplateButton() {
                           />
                         </svg>
                         <div>
-                          <p className="text-sm font-medium text-gray-700">{selectedFile.name}</p>
+                          <p className="text-sm font-medium text-gray-300">{selectedFile.name}</p>
                           <p className="text-xs text-gray-500">
                             {(selectedFile.size / 1024).toFixed(2)} KB
                           </p>
@@ -263,7 +263,7 @@ export default function CreateTemplateButton() {
                       </button>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-800 border-dashed rounded-lg cursor-pointer bg-gray-900/60 hover:bg-gray-900/80 transition-colors">
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <svg
                           className="w-10 h-10 mb-3 text-gray-400"
@@ -299,7 +299,7 @@ export default function CreateTemplateButton() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-300">
                     HTML Content (with Handlebars) {!selectedFile && '*'}
                   </label>
                   {selectedFile && (
@@ -312,7 +312,7 @@ export default function CreateTemplateButton() {
                   required={!selectedFile}
                   value={formData.htmlContent}
                   onChange={(e) => setFormData({ ...formData, htmlContent: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm text-gray-900 placeholder:text-gray-400"
+                  className="w-full border border-gray-800 rounded-lg px-3 py-2 font-mono text-sm text-gray-100 placeholder:text-gray-400"
                   rows={15}
                   placeholder={
                     selectedFile
@@ -346,14 +346,14 @@ export default function CreateTemplateButton() {
                     resetForm();
                     setShowModal(false);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-800 rounded-lg hover:bg-gray-900/60"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-indigo-500/90 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50"
                 >
                   {loading ? 'Uploading...' : 'Upload Template'}
                 </button>

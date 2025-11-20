@@ -48,6 +48,6 @@ if [ -n "$AI_FOUNDRY_ENDPOINT" ] && [ -n "$AI_FOUNDRY_KEY" ]; then
     echo "# Azure AI Foundry"
     echo "AZURE_AI_FOUNDRY_ENDPOINT=${AI_FOUNDRY_ENDPOINT}"
     echo "AZURE_AI_FOUNDRY_API_KEY=${AI_FOUNDRY_KEY}"
-    echo "AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-4"
+    echo "AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-35-turbo"
 fi
 

@@ -171,18 +171,18 @@ export default function CreateKnowledgeBaseButton() {
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        className="bg-indigo-500/90 text-white px-6 py-2 rounded-lg hover:bg-indigo-500 transition-colors"
       >
         Add Article
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Add Knowledge Base Article</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900/95 border border-gray-800 rounded-2xl shadow-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4 text-gray-100">Add Knowledge Base Article</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Title *
                 </label>
                 <input
@@ -190,35 +190,36 @@ export default function CreateKnowledgeBaseButton() {
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400"
+                  className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100 placeholder:text-gray-400"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Type *
                 </label>
                 <select
                   required
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                  className="w-full border border-gray-800 rounded-lg px-3 py-2 text-gray-100"
                 >
                   <option value="article">Article</option>
                   <option value="deck">Deck</option>
                   <option value="spec">Spec</option>
                   <option value="note">Note</option>
                   <option value="data">Data</option>
+                  <option value="position_paper">Position Paper</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Upload File (Optional)
                 </label>
                 <div className="space-y-2">
                   {selectedFile ? (
-                    <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-300 rounded-lg">
+                    <div className="flex items-center justify-between p-3 bg-gray-900/60 border border-gray-800 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <svg
                           className="w-5 h-5 text-gray-500"
@@ -234,7 +235,7 @@ export default function CreateKnowledgeBaseButton() {
                           />
                         </svg>
                         <div>
-                          <p className="text-sm font-medium text-gray-700">{selectedFile.name}</p>
+                          <p className="text-sm font-medium text-gray-300">{selectedFile.name}</p>
                           <p className="text-xs text-gray-500">
                             {(selectedFile.size / 1024).toFixed(2)} KB
                           </p>
@@ -249,7 +250,7 @@ export default function CreateKnowledgeBaseButton() {
                       </button>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-800 border-dashed rounded-lg cursor-pointer bg-gray-900/60 hover:bg-gray-900/80 transition-colors">
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <svg
                           className="w-10 h-10 mb-3 text-gray-400"
@@ -285,7 +286,7 @@ export default function CreateKnowledgeBaseButton() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-300">
                     Content {!selectedFile && '*'}
                   </label>
                   {selectedFile && (
@@ -300,7 +301,7 @@ export default function CreateKnowledgeBaseButton() {
                   required={!selectedFile || (selectedFile && !isPDFFile(selectedFile))}
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-600"
+                  className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100 placeholder:text-gray-400 disabled:bg-gray-900/40 disabled:cursor-not-allowed disabled:text-gray-500"
                   rows={10}
                   placeholder={
                     selectedFile && isPDFFile(selectedFile)
@@ -309,33 +310,33 @@ export default function CreateKnowledgeBaseButton() {
                       ? 'Content from file...'
                       : 'Enter article content...'
                   }
-                  disabled={selectedFile && isPDFFile(selectedFile)}
+                  disabled={!!(selectedFile && isPDFFile(selectedFile))}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Tags (comma-separated)
                   </label>
                   <input
                     type="text"
                     value={formData.tags}
                     onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400"
+                    className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100 placeholder:text-gray-400"
                     placeholder="e.g., architecture, ai, roadmap"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Brand
                   </label>
                   <input
                     type="text"
                     value={formData.brand}
                     onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400"
+                    className="w-full border border-gray-800 rounded-lg px-3 py-2 bg-gray-900/60 text-gray-100 placeholder:text-gray-400"
                   />
                 </div>
               </div>
@@ -347,14 +348,14 @@ export default function CreateKnowledgeBaseButton() {
                     resetForm();
                     setShowModal(false);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-800 rounded-lg hover:bg-gray-900/60"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-indigo-500/90 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50"
                 >
                   {loading ? 'Creating...' : 'Create Article'}
                 </button>

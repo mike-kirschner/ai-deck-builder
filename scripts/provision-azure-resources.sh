@@ -14,7 +14,8 @@
 #   environment: Environment name (e.g., dev, staging, prod)
 #   inbound-access: (optional) "public" (default) or "private" for App Service network access
 
-set -e  # Exit on error
+# Note: We don't use 'set -e' because we want to handle throttling errors gracefully
+# Instead, we check exit codes explicitly for critical operations
 
 # Note: Azure CLI may show deprecation warnings (e.g., 'vnet_route_all_enabled')
 # These are harmless and can be safely ignored - they're internal SDK attributes
@@ -53,6 +54,10 @@ SEARCH_SERVICE="search-${APP_NAME}"
 KEY_VAULT="kv-${APP_NAME}"
 APP_SERVICE_PLAN="plan-${APP_NAME}"
 APP_SERVICE="app-${APP_NAME}"
+
+# Initialize flags for error handling
+SKIP_APP_SERVICE=false
+SKIP_APP_SERVICE_CONFIG=false
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Azure Resource Provisioning${NC}"
@@ -365,32 +370,103 @@ fi
 
 # Step 9: Create App Service Plan
 echo -e "${GREEN}[9/10] Creating App Service Plan...${NC}"
-az appservice plan create \
-    --resource-group "${RESOURCE_GROUP}" \
-    --name "${APP_SERVICE_PLAN}" \
-    --location "${LOCATION}" \
-    --sku B1 \
-    --is-linux \
-    --output none
-echo -e "${GREEN}✓ App Service Plan created${NC}"
 
-# Step 10: Create App Service
-echo -e "${GREEN}[10/10] Creating App Service...${NC}"
-# Note: You may see a deprecation warning about 'vnet_route_all_enabled' - this is harmless
-# and can be safely ignored. It's an internal Azure SDK attribute that's no longer used.
-
-# Configure inbound access based on parameter
-if [ "${INBOUND_ACCESS}" = "private" ]; then
-    echo -e "${YELLOW}⚠ Private endpoint access selected. You'll need to configure VNet integration separately.${NC}"
-    echo -e "${YELLOW}   Creating App Service with public access first (can be restricted later).${NC}"
+# Check if App Service Plan already exists
+if az appservice plan show --resource-group "${RESOURCE_GROUP}" --name "${APP_SERVICE_PLAN}" &> /dev/null; then
+    echo -e "${YELLOW}⚠ App Service Plan '${APP_SERVICE_PLAN}' already exists. Using existing plan.${NC}"
+    APP_SERVICE_PLAN_EXISTS=true
+else
+    # Retry logic for throttling
+    MAX_RETRIES=3
+    RETRY_DELAY=60  # Start with 60 seconds
+    RETRY_COUNT=0
+    APP_SERVICE_PLAN_EXISTS=false
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        ERROR_OUTPUT=$(az appservice plan create \
+            --resource-group "${RESOURCE_GROUP}" \
+            --name "${APP_SERVICE_PLAN}" \
+            --location "${LOCATION}" \
+            --sku B1 \
+            --is-linux \
+            --output none 2>&1 || echo "ERROR:$?")
+        
+        EXIT_CODE=$?
+        
+        if [ $EXIT_CODE -eq 0 ]; then
+            echo -e "${GREEN}✓ App Service Plan created${NC}"
+            APP_SERVICE_PLAN_EXISTS=true
+            break
+        else
+            if echo "${ERROR_OUTPUT}" | grep -qi "throttl"; then
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                    echo -e "${YELLOW}⚠ Throttling error detected. Waiting ${RETRY_DELAY} seconds before retry ${RETRY_COUNT}/${MAX_RETRIES}...${NC}"
+                    sleep $RETRY_DELAY
+                    RETRY_DELAY=$((RETRY_DELAY * 2))  # Exponential backoff
+                else
+                    echo -e "${RED}✗ Failed to create App Service Plan after ${MAX_RETRIES} retries due to throttling${NC}"
+                    echo -e "${YELLOW}You can create it manually later with:${NC}"
+                    echo "az appservice plan create \\"
+                    echo "  --resource-group ${RESOURCE_GROUP} \\"
+                    echo "  --name ${APP_SERVICE_PLAN} \\"
+                    echo "  --location ${LOCATION} \\"
+                    echo "  --sku B1 \\"
+                    echo "  --is-linux"
+                    echo ""
+                    echo -e "${YELLOW}Or wait 10-15 minutes and run this script again (it will skip already created resources).${NC}"
+                    echo -e "${YELLOW}Continuing with other resources...${NC}"
+                    SKIP_APP_SERVICE=true
+                    break
+                fi
+            else
+                # Non-throttling error
+                echo -e "${RED}✗ Failed to create App Service Plan: ${ERROR_OUTPUT}${NC}"
+                SKIP_APP_SERVICE=true
+                break
+            fi
+        fi
+    done
 fi
 
-az webapp create \
-    --resource-group "${RESOURCE_GROUP}" \
-    --plan "${APP_SERVICE_PLAN}" \
-    --name "${APP_SERVICE}" \
-    --runtime "NODE:20-lts" \
-    --output none
+# Step 10: Create App Service
+if [ "${SKIP_APP_SERVICE}" = "true" ]; then
+    echo -e "${YELLOW}[10/10] Skipping App Service creation (App Service Plan creation failed)${NC}"
+    echo -e "${YELLOW}You can create the App Service manually after creating the App Service Plan.${NC}"
+else
+    echo -e "${GREEN}[10/10] Creating App Service...${NC}"
+    # Note: You may see a deprecation warning about 'vnet_route_all_enabled' - this is harmless
+    # and can be safely ignored. It's an internal Azure SDK attribute that's no longer used.
+
+    # Configure inbound access based on parameter
+    if [ "${INBOUND_ACCESS}" = "private" ]; then
+        echo -e "${YELLOW}⚠ Private endpoint access selected. You'll need to configure VNet integration separately.${NC}"
+        echo -e "${YELLOW}   Creating App Service with public access first (can be restricted later).${NC}"
+    fi
+
+    # Check if App Service already exists
+    if az webapp show --resource-group "${RESOURCE_GROUP}" --name "${APP_SERVICE}" &> /dev/null; then
+        echo -e "${YELLOW}⚠ App Service '${APP_SERVICE}' already exists. Skipping creation.${NC}"
+    else
+        if az webapp create \
+            --resource-group "${RESOURCE_GROUP}" \
+            --plan "${APP_SERVICE_PLAN}" \
+            --name "${APP_SERVICE}" \
+            --runtime "NODE:20-lts" \
+            --output none 2>&1; then
+            echo -e "${GREEN}✓ App Service created${NC}"
+        else
+            echo -e "${RED}✗ Failed to create App Service${NC}"
+            echo -e "${YELLOW}You can create it manually later with:${NC}"
+            echo "az webapp create \\"
+            echo "  --resource-group ${RESOURCE_GROUP} \\"
+            echo "  --plan ${APP_SERVICE_PLAN} \\"
+            echo "  --name ${APP_SERVICE} \\"
+            echo "  --runtime NODE:20-lts"
+            SKIP_APP_SERVICE_CONFIG=true
+        fi
+    fi
+fi
 
 # Configure public network access if private endpoint is desired
 if [ "${INBOUND_ACCESS}" = "private" ]; then
@@ -403,116 +479,162 @@ if [ "${INBOUND_ACCESS}" = "private" ]; then
     echo -e "${YELLOW}  See: https://learn.microsoft.com/en-us/azure/app-service/networking/private-endpoint${NC}"
 fi
 
-# Enable managed identity
-echo -e "${GREEN}Enabling Managed Identity...${NC}"
-PRINCIPAL_ID=$(az webapp identity assign \
-    --resource-group "${RESOURCE_GROUP}" \
-    --name "${APP_SERVICE}" \
-    --query principalId -o tsv)
-
-# Grant Key Vault access to App Service managed identity
-echo -e "${GREEN}Granting Key Vault access to App Service...${NC}"
-
-# Reconstruct Key Vault scope (in case variables aren't available)
-SUBSCRIPTION_ID_APP=$(az account show --query id -o tsv)
-KEY_VAULT_SCOPE_APP="/subscriptions/${SUBSCRIPTION_ID_APP}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT}"
-
-# Check if Key Vault uses RBAC
-KEY_VAULT_RBAC_APP=$(az keyvault show \
-    --name "${KEY_VAULT}" \
-    --resource-group "${RESOURCE_GROUP}" \
-    --query properties.enableRbacAuthorization -o tsv 2>/dev/null || echo "true")
-
-if [ "${KEY_VAULT_RBAC_APP}" = "true" ]; then
-    # Use RBAC role assignment for App Service managed identity
-    echo -e "${GREEN}Assigning RBAC role to App Service managed identity...${NC}"
-    if az role assignment create \
-        --role "Key Vault Secrets User" \
-        --assignee "${PRINCIPAL_ID}" \
-        --scope "${KEY_VAULT_SCOPE_APP}" \
-        --output none 2>/dev/null; then
-        echo -e "${GREEN}✓ RBAC role assigned to App Service${NC}"
-    else
-        echo -e "${YELLOW}⚠ Could not assign RBAC role to App Service. You may need to do this manually:${NC}"
-        echo "az role assignment create --role 'Key Vault Secrets User' --assignee ${PRINCIPAL_ID} --scope '${KEY_VAULT_SCOPE_APP}'"
-    fi
-else
-    # Use access policy for App Service managed identity
-    echo -e "${GREEN}Setting access policy for App Service...${NC}"
-    if az keyvault set-policy \
-        --name "${KEY_VAULT}" \
-        --object-id "${PRINCIPAL_ID}" \
-        --secret-permissions get list \
-        --output none 2>/dev/null; then
-        echo -e "${GREEN}✓ Access policy set for App Service${NC}"
-    else
-        echo -e "${YELLOW}⚠ Could not set access policy for App Service. You may need to do this manually:${NC}"
-        echo "az keyvault set-policy --name ${KEY_VAULT} --object-id ${PRINCIPAL_ID} --secret-permissions get list"
+# Enable managed identity (only if App Service was created)
+if [ "${SKIP_APP_SERVICE}" != "true" ] && [ "${SKIP_APP_SERVICE_CONFIG}" != "true" ]; then
+    echo -e "${GREEN}Enabling Managed Identity...${NC}"
+    PRINCIPAL_ID=$(az webapp identity assign \
+        --resource-group "${RESOURCE_GROUP}" \
+        --name "${APP_SERVICE}" \
+        --query principalId -o tsv 2>/dev/null || echo "")
+    
+    if [ -z "${PRINCIPAL_ID}" ]; then
+        echo -e "${YELLOW}⚠ Failed to enable managed identity. You may need to do this manually.${NC}"
+        SKIP_APP_SERVICE_CONFIG=true
     fi
 fi
 
-# Configure App Service settings
-echo -e "${GREEN}Configuring App Service settings...${NC}"
-az webapp config appsettings set \
-    --resource-group "${RESOURCE_GROUP}" \
-    --name "${APP_SERVICE}" \
-    --settings \
-        "AZURE_STORAGE_CONNECTION_STRING=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/StorageConnectionString/)" \
-        "AZURE_STORAGE_CONTAINER=presentations" \
-        "AZURE_STORAGE_TEMPLATES_CONTAINER=templates" \
-        "AZURE_COSMOS_ENDPOINT=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/CosmosEndpoint/)" \
-        "AZURE_COSMOS_KEY=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/CosmosKey/)" \
-        "AZURE_COSMOS_DATABASE=deck-builder" \
-        "AZURE_SEARCH_ENDPOINT=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/SearchEndpoint/)" \
-        "AZURE_SEARCH_API_KEY=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/SearchApiKey/)" \
-        "AZURE_SEARCH_INDEX=knowledge-base" \
-        "NODE_ENV=production" \
-        "WEBSITE_NODE_DEFAULT_VERSION=~20" \
-    --output none
+# Grant Key Vault access to App Service managed identity (only if App Service was created)
+if [ "${SKIP_APP_SERVICE}" != "true" ] && [ "${SKIP_APP_SERVICE_CONFIG}" != "true" ] && [ -n "${PRINCIPAL_ID}" ]; then
+    echo -e "${GREEN}Granting Key Vault access to App Service...${NC}"
 
-# Configure startup command for Next.js standalone mode
-# For standalone builds, use 'node server.js' instead of 'npm start'
-az webapp config set \
-    --resource-group "${RESOURCE_GROUP}" \
-    --name "${APP_SERVICE}" \
-    --startup-file "node server.js" \
-    --output none
+    # Reconstruct Key Vault scope (in case variables aren't available)
+    SUBSCRIPTION_ID_APP=$(az account show --query id -o tsv)
+    KEY_VAULT_SCOPE_APP="/subscriptions/${SUBSCRIPTION_ID_APP}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT}"
 
-echo -e "${GREEN}✓ App Service created and configured${NC}"
+    # Check if Key Vault uses RBAC
+    KEY_VAULT_RBAC_APP=$(az keyvault show \
+        --name "${KEY_VAULT}" \
+        --resource-group "${RESOURCE_GROUP}" \
+        --query properties.enableRbacAuthorization -o tsv 2>/dev/null || echo "true")
+
+    if [ "${KEY_VAULT_RBAC_APP}" = "true" ]; then
+        # Use RBAC role assignment for App Service managed identity
+        echo -e "${GREEN}Assigning RBAC role to App Service managed identity...${NC}"
+        if az role assignment create \
+            --role "Key Vault Secrets User" \
+            --assignee "${PRINCIPAL_ID}" \
+            --scope "${KEY_VAULT_SCOPE_APP}" \
+            --output none 2>/dev/null; then
+            echo -e "${GREEN}✓ RBAC role assigned to App Service${NC}"
+        else
+            echo -e "${YELLOW}⚠ Could not assign RBAC role to App Service. You may need to do this manually:${NC}"
+            echo "az role assignment create --role 'Key Vault Secrets User' --assignee ${PRINCIPAL_ID} --scope '${KEY_VAULT_SCOPE_APP}'"
+        fi
+    else
+        # Use access policy for App Service managed identity
+        echo -e "${GREEN}Setting access policy for App Service...${NC}"
+        if az keyvault set-policy \
+            --name "${KEY_VAULT}" \
+            --object-id "${PRINCIPAL_ID}" \
+            --secret-permissions get list \
+            --output none 2>/dev/null; then
+            echo -e "${GREEN}✓ Access policy set for App Service${NC}"
+        else
+            echo -e "${YELLOW}⚠ Could not set access policy for App Service. You may need to do this manually:${NC}"
+            echo "az keyvault set-policy --name ${KEY_VAULT} --object-id ${PRINCIPAL_ID} --secret-permissions get list"
+        fi
+    fi
+
+    # Configure App Service settings
+    echo -e "${GREEN}Configuring App Service settings...${NC}"
+    if az webapp config appsettings set \
+        --resource-group "${RESOURCE_GROUP}" \
+        --name "${APP_SERVICE}" \
+        --settings \
+            "AZURE_STORAGE_CONNECTION_STRING=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/StorageConnectionString/)" \
+            "AZURE_STORAGE_CONTAINER=presentations" \
+            "AZURE_STORAGE_TEMPLATES_CONTAINER=templates" \
+            "AZURE_COSMOS_ENDPOINT=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/CosmosEndpoint/)" \
+            "AZURE_COSMOS_KEY=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/CosmosKey/)" \
+            "AZURE_COSMOS_DATABASE=deck-builder" \
+            "AZURE_SEARCH_ENDPOINT=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/SearchEndpoint/)" \
+            "AZURE_SEARCH_API_KEY=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/SearchApiKey/)" \
+            "AZURE_SEARCH_INDEX=knowledge-base" \
+            "NODE_ENV=production" \
+            "WEBSITE_NODE_DEFAULT_VERSION=~20" \
+        --output none 2>/dev/null; then
+        echo -e "${GREEN}✓ App Service settings configured${NC}"
+    else
+        echo -e "${YELLOW}⚠ Failed to configure App Service settings${NC}"
+    fi
+
+    # Configure startup command for Next.js standalone mode
+    # For standalone builds, use 'node server.js' instead of 'npm start'
+    if az webapp config set \
+        --resource-group "${RESOURCE_GROUP}" \
+        --name "${APP_SERVICE}" \
+        --startup-file "node server.js" \
+        --output none 2>/dev/null; then
+        echo -e "${GREEN}✓ App Service startup command configured${NC}"
+    else
+        echo -e "${YELLOW}⚠ Failed to configure startup command${NC}"
+    fi
+
+    echo -e "${GREEN}✓ App Service created and configured${NC}"
+elif [ "${SKIP_APP_SERVICE}" = "true" ]; then
+    echo -e "${YELLOW}⚠ App Service configuration skipped (App Service Plan creation failed)${NC}"
+fi
 
 # Summary
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Provisioning Complete!${NC}"
+if [ "${SKIP_APP_SERVICE}" = "true" ]; then
+    echo -e "${YELLOW}Provisioning Mostly Complete (App Service skipped)${NC}"
+else
+    echo -e "${GREEN}Provisioning Complete!${NC}"
+fi
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "Resource Group: ${YELLOW}${RESOURCE_GROUP}${NC}"
-echo -e "App Service: ${YELLOW}https://${APP_SERVICE}.azurewebsites.net${NC}"
+if [ "${SKIP_APP_SERVICE}" != "true" ]; then
+    echo -e "App Service: ${YELLOW}https://${APP_SERVICE}.azurewebsites.net${NC}"
+else
+    echo -e "App Service: ${RED}Not created (throttling error)${NC}"
+fi
 echo -e "Storage Account: ${YELLOW}${STORAGE_ACCOUNT}${NC}"
 echo -e "Cosmos DB: ${YELLOW}${COSMOS_ACCOUNT}${NC}"
 echo -e "Search Service: ${YELLOW}${SEARCH_SERVICE}${NC}"
 echo -e "Key Vault: ${YELLOW}${KEY_VAULT}${NC}"
 echo ""
+
+if [ "${SKIP_APP_SERVICE}" = "true" ]; then
+    echo -e "${YELLOW}⚠ App Service Plan/App Service creation was skipped due to throttling.${NC}"
+    echo -e "${YELLOW}To complete the setup, wait 10-15 minutes and run:${NC}"
+    echo ""
+    echo -e "${GREEN}Option 1: Use the helper script (recommended):${NC}"
+    echo "./scripts/create-app-service.sh ${RESOURCE_GROUP} ${APP_SERVICE_PLAN} ${APP_SERVICE} ${LOCATION} ${KEY_VAULT}"
+    echo ""
+    echo -e "${GREEN}Option 2: Manual commands:${NC}"
+    echo "# Create App Service Plan:"
+    echo "az appservice plan create \\"
+    echo "  --resource-group ${RESOURCE_GROUP} \\"
+    echo "  --name ${APP_SERVICE_PLAN} \\"
+    echo "  --location ${LOCATION} \\"
+    echo "  --sku B1 \\"
+    echo "  --is-linux"
+    echo ""
+    echo "# Create App Service:"
+    echo "az webapp create \\"
+    echo "  --resource-group ${RESOURCE_GROUP} \\"
+    echo "  --plan ${APP_SERVICE_PLAN} \\"
+    echo "  --name ${APP_SERVICE} \\"
+    echo "  --runtime NODE:20-lts"
+    echo ""
+    echo "# Then run the helper script to configure everything:"
+    echo "./scripts/create-app-service.sh ${RESOURCE_GROUP} ${APP_SERVICE_PLAN} ${APP_SERVICE} ${LOCATION} ${KEY_VAULT}"
+    echo ""
+fi
 echo -e "${YELLOW}Next Steps:${NC}"
-echo "1. Set AZURE_AI_FOUNDRY_ENDPOINT and AZURE_AI_FOUNDRY_API_KEY in Key Vault:"
+echo "1. Provision Azure OpenAI resource and deploy model:"
+echo "   ./scripts/provision-azure-openai.sh ${RESOURCE_GROUP} ${LOCATION} ${KEY_VAULT} ${APP_SERVICE} gpt-35-turbo"
+echo ""
+echo "   Or manually set AZURE_AI_FOUNDRY_ENDPOINT and AZURE_AI_FOUNDRY_API_KEY in Key Vault:"
 echo "   az keyvault secret set --vault-name ${KEY_VAULT} --name AzureAiFoundryEndpoint --value <your-endpoint>"
 echo "   az keyvault secret set --vault-name ${KEY_VAULT} --name AzureAiFoundryApiKey --value <your-api-key>"
 echo ""
-echo "   Optional: If your project name is not in the endpoint URL, also set:"
-echo "   az keyvault secret set --vault-name ${KEY_VAULT} --name AzureAiFoundryProjectName --value <your-project-name>"
+echo "2. Create Azure AI Search index 'knowledge-base' (see scripts/create-search-index.sh)"
 echo ""
-echo "2. Add these to App Service settings:"
-echo "   az webapp config appsettings set --resource-group ${RESOURCE_GROUP} --name ${APP_SERVICE} --settings \\"
-echo "     'AZURE_AI_FOUNDRY_ENDPOINT=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/AzureAiFoundryEndpoint/)' \\"
-echo "     'AZURE_AI_FOUNDRY_API_KEY=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/AzureAiFoundryApiKey/)' \\"
-echo "     'AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-4'"
-echo ""
-echo "   If you set a project name, also add:"
-echo "     'AZURE_AI_FOUNDRY_PROJECT_NAME=@Microsoft.KeyVault(SecretUri=https://${KEY_VAULT}.vault.azure.net/secrets/AzureAiFoundryProjectName/)'"
-echo ""
-echo "3. Create Azure AI Search index 'knowledge-base' (see scripts/create-search-index.sh)"
-echo ""
-echo "4. Deploy your application using the CI/CD pipeline or:"
+echo "3. Deploy your application using the CI/CD pipeline or:"
 echo "   az webapp deploy --resource-group ${RESOURCE_GROUP} --name ${APP_SERVICE} --src-path <your-zip-file> --type zip"
 echo "   Or use the deployment script: ./scripts/deploy-to-azure.sh ${RESOURCE_GROUP} ${APP_SERVICE}"
 echo ""

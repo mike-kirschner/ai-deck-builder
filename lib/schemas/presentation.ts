@@ -8,6 +8,7 @@ export const SectionSchema = z.object({
   content: z.string().optional(),
   notes: z.string().optional(),
   order: z.number().optional(),
+  metadata: z.record(z.any()).optional(),
 });
 
 // Presentation content schema (what agents output)

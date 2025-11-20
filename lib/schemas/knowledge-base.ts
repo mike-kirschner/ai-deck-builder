@@ -5,7 +5,7 @@ export const KnowledgeBaseArticleSchema = z.object({
   id: z.string(),
   title: z.string(),
   content: z.string(),
-  type: z.enum(['article', 'deck', 'spec', 'note', 'data']),
+  type: z.enum(['article', 'deck', 'spec', 'note', 'data', 'position_paper']),
   tags: z.array(z.string()).optional(),
   brand: z.string().optional(),
   owner: z.string().optional(),
@@ -23,7 +23,7 @@ export type KnowledgeBaseArticle = z.infer<typeof KnowledgeBaseArticleSchema>;
 export const KnowledgeBaseUploadSchema = z.object({
   title: z.string(),
   content: z.string(),
-  type: z.enum(['article', 'deck', 'spec', 'note', 'data']),
+  type: z.enum(['article', 'deck', 'spec', 'note', 'data', 'position_paper']),
   tags: z.array(z.string()).optional(),
   brand: z.string().optional(),
   file: z.instanceof(File).optional(),

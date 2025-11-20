@@ -69,9 +69,45 @@ chmod +x scripts/create-search-index.sh
 ./scripts/create-search-index.sh rg-ai-deck-builder search-ai-deck-builder-dev-123456
 ```
 
-### 3. Configure Azure AI Foundry
+### 3. Provision Azure OpenAI Resource and Deploy Model
 
-Azure AI Foundry requires manual setup in the Azure Portal. After setting it up:
+**Option A: Use the automated script (Recommended)**
+
+```bash
+chmod +x scripts/provision-azure-openai.sh
+./scripts/provision-azure-openai.sh <resource-group> <location> <key-vault-name> [app-service-name] [model-name]
+```
+
+**Example:**
+```bash
+./scripts/provision-azure-openai.sh rg-ai-deck-builder eastus kv-ai-deck-builder-dev-123456 app-ai-deck-builder-dev-123456 gpt-35-turbo
+```
+
+This script will:
+- Create an Azure OpenAI resource
+- Deploy the specified model (default: gpt-35-turbo)
+- Store credentials in Key Vault
+- Configure App Service settings (if app service name provided)
+
+**Note on Model Availability:**
+- `o4-mini` and `o1-mini` are **NOT available** in Azure OpenAI (they're only available in OpenAI directly)
+- Common Azure OpenAI models: `gpt-35-turbo` (default, cost-effective), `gpt-4` (high quality), `gpt-4-turbo` (high quality, better performance)
+- The script will check available models and warn you if your chosen model isn't available
+
+**Note:** Azure OpenAI requires approval/access request. If you get an error:
+1. Go to https://aka.ms/oai/access
+2. Fill out the access request form
+3. Wait for approval (can take 1-2 business days)
+
+**If Model Deployment Fails:**
+If the script fails to deploy the model automatically, you can deploy it manually:
+1. **Via Azure Portal**: Go to your OpenAI resource → Model deployments → Create
+2. **See detailed instructions**: `scripts/deploy-model-manual.md`
+3. After manual deployment, re-run this script to configure Key Vault and App Service (it will detect the existing deployment)
+
+**Option B: Manual setup**
+
+If you already have an Azure OpenAI resource:
 
 1. Store the endpoint and API key in Key Vault:
 ```bash
@@ -94,7 +130,7 @@ az webapp config appsettings set \
   --settings \
     AZURE_AI_FOUNDRY_ENDPOINT=@Microsoft.KeyVault(SecretUri=https://<key-vault>.vault.azure.net/secrets/AzureAiFoundryEndpoint/) \
     AZURE_AI_FOUNDRY_API_KEY=@Microsoft.KeyVault(SecretUri=https://<key-vault>.vault.azure.net/secrets/AzureAiFoundryApiKey/) \
-    AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-4
+    AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-35-turbo
 ```
 
 ## Resource Details

@@ -52,7 +52,7 @@ AZURE_SEARCH_INDEX=knowledge-base
 # Azure AI Foundry (optional for basic testing)
 AZURE_AI_FOUNDRY_ENDPOINT=https://YOUR_ENDPOINT.openai.azure.com
 AZURE_AI_FOUNDRY_API_KEY=YOUR_API_KEY
-AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-4
+AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-35-turbo
 ```
 
 ## Getting Your Azure Credentials

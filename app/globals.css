@@ -3,21 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #030712; /* gray-950 */
+  --foreground: #f3f4f6; /* gray-100 */
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 @layer utilities {
@@ -26,7 +19,7 @@ body {
   }
 }
 
-/* Ensure all form inputs have dark, readable text */
+/* Ensure all form inputs have light text on dark background */
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -36,7 +29,8 @@ input[type="url"],
 input[type="tel"],
 textarea,
 select {
-  color: rgb(17 24 39); /* text-gray-900 */
+  color: rgb(243 244 246); /* text-gray-100 */
+  background-color: rgb(17 24 39); /* bg-gray-900 */
 }
 
 input::placeholder,

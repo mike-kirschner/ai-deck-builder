@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Presentation } from '@/lib/schemas/presentation';
 import { format } from 'date-fns';
+import AddSlideButton from './AddSlideButton';
 
 export default function PresentationViewer({ presentationId }: { presentationId: string }) {
   const [presentation, setPresentation] = useState<Presentation | null>(null);
@@ -10,12 +11,14 @@ export default function PresentationViewer({ presentationId }: { presentationId:
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'embedded' | 'fullscreen'>('embedded');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchPresentation();
-  }, [presentationId]);
+  }, [presentationId, refreshKey]);
 
   async function fetchPresentation() {
+    setLoading(true);
     try {
       const [presResponse, renderResponse] = await Promise.all([
         fetch(`/api/presentations/${presentationId}`),
@@ -76,22 +79,22 @@ export default function PresentationViewer({ presentationId }: { presentationId:
   }
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return <div className="text-center py-12 text-gray-400">Loading...</div>;
   }
 
   if (!presentation) {
-    return <div className="text-center py-12">Presentation not found</div>;
+    return <div className="text-center py-12 text-gray-400">Presentation not found</div>;
   }
 
   // Fullscreen view
   if (viewMode === 'fullscreen' && renderedHtml) {
     return (
-      <div className="fixed inset-0 z-50 bg-white">
-        <div className="absolute top-0 left-0 right-0 bg-gray-800 text-white p-4 flex justify-between items-center z-10">
+      <div className="fixed inset-0 z-50 bg-gray-950">
+        <div className="absolute top-0 left-0 right-0 bg-gray-900 border-b border-gray-800 text-gray-100 p-4 flex justify-between items-center z-10">
           <h2 className="text-lg font-semibold">{presentation.title}</h2>
           <button
             onClick={handleExitFullscreen}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
           >
             Exit Fullscreen
           </button>
@@ -109,42 +112,48 @@ export default function PresentationViewer({ presentationId }: { presentationId:
 
   return (
     <div>
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-gray-900/40 border border-gray-800 rounded-2xl shadow-2xl p-6 mb-6">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-100 mb-2">
               {presentation.title}
             </h1>
             {presentation.content.subtitle && (
-              <p className="text-gray-600">{presentation.content.subtitle}</p>
+              <p className="text-gray-400">{presentation.content.subtitle}</p>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
+            <AddSlideButton 
+              presentationId={presentationId}
+              onSlideAdded={() => {
+                setRefreshKey(prev => prev + 1);
+              }}
+            />
             <button
               onClick={handleViewInNewWindow}
               disabled={!renderedHtml}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-indigo-500/90 hover:bg-indigo-500 text-white rounded-lg disabled:opacity-50 transition text-sm"
             >
               View in New Window
             </button>
             <button
               onClick={handleFullscreen}
               disabled={!renderedHtml}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              className="px-4 py-2 bg-purple-500/90 hover:bg-purple-500 text-white rounded-lg disabled:opacity-50 transition text-sm"
             >
               Fullscreen
             </button>
             <button
               onClick={() => handleExport('pdf')}
               disabled={!!exporting}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              className="px-4 py-2 bg-rose-500/90 hover:bg-rose-500 text-white rounded-lg disabled:opacity-50 transition text-sm"
             >
               {exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}
             </button>
             <button
               onClick={() => handleExport('pptx')}
               disabled={!!exporting}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              className="px-4 py-2 bg-emerald-500/90 hover:bg-emerald-500 text-white rounded-lg disabled:opacity-50 transition text-sm"
             >
               {exporting === 'pptx' ? 'Exporting...' : 'Export PPTX'}
             </button>
@@ -152,16 +161,16 @@ export default function PresentationViewer({ presentationId }: { presentationId:
         </div>
 
         <div className="flex items-center space-x-4 text-sm text-gray-500">
-          <span>Status: <span className="capitalize">{presentation.status}</span></span>
+          <span>Status: <span className="capitalize px-2 py-1 rounded bg-gray-800 text-gray-300">{presentation.status}</span></span>
           <span>Created: {format(new Date(presentation.created_at), 'MMM d, yyyy')}</span>
           <span>Version: {presentation.version}</span>
         </div>
       </div>
 
       {renderedHtml && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="border-b border-gray-200 p-4 bg-gray-50">
-            <p className="text-sm text-gray-600">
+        <div className="bg-gray-900/40 border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="border-b border-gray-800 p-4 bg-gray-900/60">
+            <p className="text-sm text-gray-400">
               HTML/CSS Presentation View - All styles and formatting are rendered as HTML and CSS
             </p>
           </div>

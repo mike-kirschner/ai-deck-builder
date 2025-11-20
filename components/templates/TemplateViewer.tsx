@@ -37,10 +37,10 @@ export default function TemplateViewer({ templateId }: { templateId: string }) {
 
   return (
     <div>
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">{template.name}</h1>
+      <div className="bg-gray-900/40 border border-gray-800 rounded-lg shadow-2xl rounded-2xl p-6 mb-6">
+        <h1 className="text-3xl font-bold text-gray-100 mb-2">{template.name}</h1>
         {template.description && (
-          <p className="text-gray-600 mb-4">{template.description}</p>
+          <p className="text-gray-400 mb-4">{template.description}</p>
         )}
         
         <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
@@ -63,15 +63,15 @@ export default function TemplateViewer({ templateId }: { templateId: string }) {
         )}
 
         {template.brand && (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-400">
             Brand: <span className="font-medium">{template.brand}</span>
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">HTML Template</h2>
-        <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">
+      <div className="bg-gray-900/40 border border-gray-800 rounded-lg shadow-2xl rounded-2xl p-6">
+        <h2 className="text-xl font-semibold text-gray-100 mb-4">HTML Template</h2>
+        <pre className="bg-gray-900/60 p-4 rounded-lg overflow-x-auto text-sm">
           <code>{template.html_content}</code>
         </pre>
       </div>

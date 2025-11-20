@@ -72,7 +72,7 @@ Create a `.env.local` file:
 # Azure AI Foundry
 AZURE_AI_FOUNDRY_ENDPOINT=your-endpoint
 AZURE_AI_FOUNDRY_API_KEY=your-api-key
-AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-4
+AZURE_AI_FOUNDRY_DEPLOYMENT=gpt-35-turbo
 
 # Azure Storage
 AZURE_STORAGE_CONNECTION_STRING=your-connection-string

@@ -2,12 +2,15 @@
 // These should be set as environment variables
 
 export const azureConfig = {
-  // Azure AI Foundry
+  // Azure AI Foundry (now includes Azure OpenAI Service)
+  // As of 2024/2025, Azure OpenAI is integrated into Azure AI Foundry
+  // No separate Azure OpenAI resource needed
   aiFoundry: {
     endpoint: process.env.AZURE_AI_FOUNDRY_ENDPOINT || '',
     apiKey: process.env.AZURE_AI_FOUNDRY_API_KEY || '',
-    deploymentName: process.env.AZURE_AI_FOUNDRY_DEPLOYMENT || 'gpt-4',
+    deploymentName: process.env.AZURE_AI_FOUNDRY_DEPLOYMENT || 'gpt-35-turbo',
     projectName: process.env.AZURE_AI_FOUNDRY_PROJECT_NAME || '', // Optional: project name if not in endpoint URL
+    apiVersion: process.env.AZURE_AI_FOUNDRY_API_VERSION || 'latest', // Use 'latest' or 'preview'
   },
   
   // Azure Blob Storage
