@@ -16,10 +16,20 @@ export default function PresentationList() {
   async function fetchPresentations() {
     try {
       const response = await fetch('/api/presentations');
+      if (!response.ok) {
+        throw new Error('Failed to fetch presentations');
+      }
       const data = await response.json();
-      setPresentations(data);
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setPresentations(data);
+      } else {
+        console.error('Invalid response format:', data);
+        setPresentations([]);
+      }
     } catch (error) {
       console.error('Error fetching presentations:', error);
+      setPresentations([]);
     } finally {
       setLoading(false);
     }

@@ -137,14 +137,17 @@ export default function CreateKnowledgeBaseButton() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create knowledge base article');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.details || errorData.error || 'Failed to create knowledge base article';
+        throw new Error(errorMessage);
       }
 
       // Refresh the page to show new article
       window.location.reload();
     } catch (error) {
       console.error('Error creating knowledge base article:', error);
-      alert('Failed to create article. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create article. Please try again.';
+      alert(errorMessage);
     } finally {
       setLoading(false);
       setShowModal(false);

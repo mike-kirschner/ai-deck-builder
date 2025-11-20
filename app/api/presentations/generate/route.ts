@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       length,
       template_id,
       context_instructions,
+      use_knowledge_base: true, // Default to using knowledge base
     });
 
     // Call outline agent
@@ -65,8 +66,13 @@ export async function POST(request: NextRequest) {
       version: 1,
     };
 
-    const validated = PresentationSchema.parse(presentationData);
-    const presentation = await createPresentation(validated);
+    // Validate with better error messages
+    const validationResult = PresentationSchema.safeParse(presentationData);
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      throw new Error(`Validation failed: ${errors}`);
+    }
+    const presentation = await createPresentation(validationResult.data);
 
     return NextResponse.json(presentation, { status: 201 });
   } catch (error) {
@@ -76,13 +82,23 @@ export async function POST(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorDetails = error instanceof Error ? error.stack : String(error);
     
+    // Determine error type for appropriate status code
+    const isValidationError = errorMessage.includes('Validation failed') || errorMessage.includes('ZodError');
+    const isAzureError = errorMessage.includes('Azure') || errorMessage.includes('not configured');
+    const isNotFoundError = errorMessage.includes('not found') || errorMessage.includes('404');
+    
+    let statusCode = 500;
+    if (isValidationError) statusCode = 400;
+    else if (isNotFoundError) statusCode = 404;
+    else if (isAzureError) statusCode = 503;
+    
     return NextResponse.json(
       { 
         error: 'Failed to generate presentation',
         details: errorMessage,
         ...(process.env.NODE_ENV === 'development' && { stack: errorDetails })
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }

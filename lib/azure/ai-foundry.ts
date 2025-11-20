@@ -25,19 +25,26 @@ function getOpenAIClient(): OpenAI {
     const isFoundryEndpoint = endpoint.includes('.services.ai.azure.com');
     
     if (isFoundryEndpoint) {
-      // Azure AI Foundry endpoint - extract base URL
+      // Azure AI Foundry endpoint - preserve project path if present
       // Example: https://foundry-ai-deck-b-484978.services.ai.azure.com/api/projects/foundry-project-ai-deck-b
-      // For OpenAI API calls, we need: https://foundry-ai-deck-b-484978.services.ai.azure.com
+      // For OpenAI API calls with projects, we need to keep the project path
       // The /openai path will be added below
-      const foundryMatch = endpoint.match(/^(https?:\/\/[^\/]+\.services\.ai\.azure\.com)/);
-      if (foundryMatch) {
-        endpoint = foundryMatch[1];
-        console.log('Detected Azure AI Foundry endpoint, using base:', endpoint);
+      if (endpoint.includes('/api/projects/')) {
+        // Endpoint includes project path - keep it
+        endpoint = endpoint.replace(/\/+$/, ''); // Remove trailing slashes
+        console.log('Detected Azure AI Foundry endpoint with project path:', endpoint);
       } else {
-        throw new Error(
-          `Invalid Azure AI Foundry endpoint format: "${endpoint}". ` +
-          `Expected format: https://your-resource.services.ai.azure.com or with project path`
-        );
+        // No project path - extract just the base domain
+        const foundryMatch = endpoint.match(/^(https?:\/\/[^\/]+\.services\.ai\.azure\.com)/);
+        if (foundryMatch) {
+          endpoint = foundryMatch[1];
+          console.log('Detected Azure AI Foundry endpoint, using base:', endpoint);
+        } else {
+          throw new Error(
+            `Invalid Azure AI Foundry endpoint format: "${endpoint}". ` +
+            `Expected format: https://your-resource.services.ai.azure.com or with project path`
+          );
+        }
       }
     } else {
       // Azure OpenAI endpoint format
@@ -55,13 +62,19 @@ function getOpenAIClient(): OpenAI {
     
     try {
       // For Azure AI Foundry, we need to construct the full path
-      // Azure AI Foundry uses: /openai/deployments/{deployment}/chat/completions
-      // Azure OpenAI uses: /openai/deployments/{deployment}/chat/completions
-      // Both should work with the same structure
+      // Azure AI Foundry with projects: /api/projects/{project}/openai/deployments/{deployment}/chat/completions
+      // Azure AI Foundry without projects: /openai/deployments/{deployment}/chat/completions
+      // Azure OpenAI: /openai/deployments/{deployment}/chat/completions
       let baseURL = endpoint;
       if (isFoundryEndpoint) {
-        // Azure AI Foundry might need /openai path appended
-        baseURL = `${endpoint}/openai`;
+        // Check if endpoint already has /api/projects/ path
+        if (endpoint.includes('/api/projects/')) {
+          // Already has project path, just append /openai
+          baseURL = `${endpoint}/openai`;
+        } else {
+          // No project path, append /openai
+          baseURL = `${endpoint}/openai`;
+        }
       }
       
       // Log configuration (without exposing API key)
@@ -76,7 +89,13 @@ function getOpenAIClient(): OpenAI {
       
       // Azure AI Foundry now supports 'latest' and 'preview' API versions
       // Use 'latest' for stable features, 'preview' for new capabilities
-      const apiVersion = azureConfig.aiFoundry.apiVersion || 'latest';
+      // For standard Azure OpenAI, use a specific version like '2024-02-15-preview'
+      let apiVersion = azureConfig.aiFoundry.apiVersion || 'latest';
+      
+      // If using standard Azure OpenAI (not Foundry), use a specific API version
+      if (!isFoundryEndpoint) {
+        apiVersion = azureConfig.aiFoundry.apiVersion || '2024-02-15-preview';
+      }
       
       openAIClient = new OpenAI({
         baseURL: baseURL,
@@ -123,7 +142,7 @@ export async function callOutlineAgent(
     );
   }
 
-  let client: AzureOpenAI;
+  let client: OpenAI;
   try {
     client = getOpenAIClient();
   } catch (error) {
@@ -287,7 +306,9 @@ ${request.length ? `\nLength: ${request.length}` : ''}`;
     // Provide helpful error messages based on error type
     if (error instanceof Error) {
       const errorMsg = error.message.toLowerCase();
-      const statusCode = error?.status || error?.response?.status || error?.code;
+      // Type-safe error property access
+      const errorAny = error as any;
+      const statusCode = errorAny?.status || errorAny?.response?.status || errorAny?.code;
       
       // Configuration errors
       if (errorMsg.includes('not configured') || errorMsg.includes('endpoint') || errorMsg.includes('api key')) {
@@ -301,8 +322,9 @@ ${request.length ? `\nLength: ${request.length}` : ''}`;
       
       // Authentication errors (401)
       if (statusCode === 401 || errorMsg.includes('401') || errorMsg.includes('unauthorized') || errorMsg.includes('authentication') || errorMsg.includes('invalid api key')) {
-        const detailedMsg = error?.response?.data?.error?.message || error?.response?.error?.message || error?.message || 'Unknown authentication error';
-        const errorBody = error?.response?.data || error?.response || {};
+        const errorAny = error as any;
+        const detailedMsg = errorAny?.response?.data?.error?.message || errorAny?.response?.error?.message || error?.message || 'Unknown authentication error';
+        const errorBody = errorAny?.response?.data || errorAny?.response || {};
         
         console.error('401 Authentication Error Details:', {
           status: statusCode,
@@ -333,7 +355,8 @@ ${request.length ? `\nLength: ${request.length}` : ''}`;
       
       // Deployment/model errors (404)
       if (statusCode === 404 || errorMsg.includes('404') || errorMsg.includes('not found') || errorMsg.includes('deployment')) {
-        const detailedMsg = error?.response?.data?.error?.message || error?.message || 'Unknown error';
+        const errorAny = error as any;
+        const detailedMsg = errorAny?.response?.data?.error?.message || error?.message || 'Unknown error';
         throw new Error(
           `Azure AI Foundry deployment "${deploymentName}" not found (404). ` +
           `Please verify:\n` +

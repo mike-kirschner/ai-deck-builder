@@ -38,6 +38,7 @@ export async function POST(
       audience: presentation.content.audience,
       tone: undefined, // Could extract from presentation metadata
       length: '1 slide',
+      use_knowledge_base: true,
     };
 
     let agentResponse;

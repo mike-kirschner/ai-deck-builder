@@ -31,7 +31,18 @@ export default function CreatePresentationButton() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.details || 'Failed to generate presentation';
+        // Show detailed error message if available
+        let errorMessage = errorData.details || errorData.error || 'Failed to generate presentation';
+        
+        // Add helpful context for common errors
+        if (errorMessage.includes('not configured')) {
+          errorMessage += '\n\nPlease check your .env.local file and ensure Azure AI Foundry is configured.';
+        } else if (errorMessage.includes('No template')) {
+          errorMessage += '\n\nPlease create a template first or specify a template_id.';
+        } else if (errorMessage.includes('Template not found')) {
+          errorMessage += '\n\nThe specified template does not exist. Please check the template ID.';
+        }
+        
         throw new Error(errorMessage);
       }
 

@@ -5,9 +5,6 @@ import { uploadFile } from '@/lib/azure/storage';
 import { KnowledgeBaseArticleSchema } from '@/lib/schemas/knowledge-base';
 import { nanoid } from 'nanoid';
 
-// pdf-parse is a CommonJS module, so we use require
-const pdfParse = require('pdf-parse');
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -71,6 +68,8 @@ export async function POST(request: NextRequest) {
           const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
           if (isPDF && fileBuffer) {
             try {
+              // Use dynamic require for pdf-parse to avoid build-time bundling issues
+              const pdfParse = require('pdf-parse');
               const pdfData = await pdfParse(fileBuffer);
               extractedContent = pdfData.text.trim();
               console.log(`Extracted ${extractedContent.length} characters from PDF: ${file.name}`);
@@ -93,9 +92,20 @@ export async function POST(request: NextRequest) {
       // Use extracted content if available, otherwise fall back to provided content
       const finalContent = extractedContent || content;
 
+      // Validate required fields
+      if (!title || title.trim() === '') {
+        throw new Error('Title is required');
+      }
+      if (!finalContent || finalContent.trim() === '') {
+        throw new Error('Content is required. Please provide content or upload a file with extractable content.');
+      }
+      if (!type) {
+        throw new Error('Type is required');
+      }
+
       articleData = {
-        title,
-        content: finalContent,
+        title: title.trim(),
+        content: finalContent.trim(),
         type,
         tags: tags.length > 0 ? tags : undefined,
         brand: brand || undefined,
@@ -115,8 +125,13 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const validated = KnowledgeBaseArticleSchema.parse(articleData);
-    const article = await createKnowledgeBaseArticle(validated);
+    // Validate with better error messages
+    const validationResult = KnowledgeBaseArticleSchema.safeParse(articleData);
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      throw new Error(`Validation failed: ${errors}`);
+    }
+    const article = await createKnowledgeBaseArticle(validationResult.data);
 
     // Index in Azure AI Search
     try {
@@ -129,9 +144,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(article, { status: 201 });
   } catch (error) {
     console.error('Error creating knowledge base article:', error);
+    
+    // Provide more detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isValidationError = errorMessage.includes('ZodError') || errorMessage.includes('parse');
+    const isAzureError = errorMessage.includes('Azure') || errorMessage.includes('not configured');
+    
     return NextResponse.json(
-      { error: 'Failed to create knowledge base article' },
-      { status: 500 }
+      { 
+        error: 'Failed to create knowledge base article',
+        details: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { 
+          stack: error instanceof Error ? error.stack : undefined 
+        })
+      },
+      { status: isValidationError ? 400 : isAzureError ? 503 : 500 }
     );
   }
 }

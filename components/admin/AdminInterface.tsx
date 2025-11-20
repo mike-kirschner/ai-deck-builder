@@ -36,13 +36,24 @@ export default function AdminInterface() {
   async function fetchPresentations() {
     try {
       const response = await fetch('/api/presentations');
+      if (!response.ok) {
+        throw new Error('Failed to fetch presentations');
+      }
       const data = await response.json();
-      setPresentations(data);
-      if (data.length > 0 && !selectedPresentationId) {
-        setSelectedPresentationId(data[0].id);
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setPresentations(data);
+        if (data.length > 0 && !selectedPresentationId) {
+          setSelectedPresentationId(data[0].id);
+        }
+      } else {
+        console.error('Invalid response format:', data);
+        setPresentations([]);
+        showStatus('Invalid response from server', 'error');
       }
     } catch (error) {
       console.error('Error fetching presentations:', error);
+      setPresentations([]);
       showStatus('Failed to load presentations', 'error');
     } finally {
       setLoading(false);

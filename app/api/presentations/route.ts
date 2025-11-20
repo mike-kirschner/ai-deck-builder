@@ -31,15 +31,32 @@ export async function POST(request: NextRequest) {
       version: 1,
     };
 
-    const validated = PresentationSchema.parse(presentationData);
-    const presentation = await createPresentation(validated);
+    // Validate with better error messages
+    const validationResult = PresentationSchema.safeParse(presentationData);
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      throw new Error(`Validation failed: ${errors}`);
+    }
+    const presentation = await createPresentation(validationResult.data);
     
     return NextResponse.json(presentation, { status: 201 });
   } catch (error) {
     console.error('Error creating presentation:', error);
+    
+    // Provide more detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isValidationError = errorMessage.includes('ZodError') || errorMessage.includes('parse');
+    const isAzureError = errorMessage.includes('Azure') || errorMessage.includes('not configured');
+    
     return NextResponse.json(
-      { error: 'Failed to create presentation' },
-      { status: 500 }
+      { 
+        error: 'Failed to create presentation',
+        details: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { 
+          stack: error instanceof Error ? error.stack : undefined 
+        })
+      },
+      { status: isValidationError ? 400 : isAzureError ? 503 : 500 }
     );
   }
 }
