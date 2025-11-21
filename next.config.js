@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone', // Optimized for Azure App Service deployment
+  // Removed standalone mode for better Azure compatibility
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
